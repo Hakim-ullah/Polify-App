@@ -21,6 +21,27 @@ const transporter = nodemailer.createTransporter({
   },
 });
 
+const sendResetEmail = async (to, otp) => {
+  const from = process.env.EMAIL_FROM || "polify@official";
+  try {
+    await transporter.sendMail({
+      from,
+      to,
+      subject: "Pollify — Password Reset Verification Code",
+      html: `<div style="font-family:Inter,Arial,sans-serif;max-width:440px;margin:auto;padding:24px;border:1px solid #e2e8f0;border-radius:16px">
+        <h2 style="color:#4f46e5;margin:0 0 8px">Pollify</h2>
+        <p style="color:#475569">Use this code to reset your password:</p>
+        <div style="font-size:34px;font-weight:800;letter-spacing:8px;color:#0f172a;margin:16px 0">${otp}</div>
+        <p style="color:#94a3b8;font-size:13px">This code expires in 15 minutes. If you didn't request it, ignore this email.</p>
+      </div>`,
+    });
+    return true;
+  } catch (emailErr) {
+    console.warn(`Email send failed from ${from}:`, emailErr.message);
+    return false;
+  }
+};
+
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -32,23 +53,12 @@ export const forgotPassword = async (req, res) => {
     user.resetOtpExpire = new Date(Date.now() + 15 * 60 * 1000);
     await user.save();
 
-    try {
-      await transporter.sendMail({
-        from: process.env.EMAIL_FROM || process.env.SMTP_USER,
-        to: user.email,
-        subject: "Pollify — Password Reset Verification Code",
-        html: `<div style="font-family:Inter,Arial,sans-serif;max-width:440px;margin:auto;padding:24px;border:1px solid #e2e8f0;border-radius:16px">
-          <h2 style="color:#4f46e5;margin:0 0 8px">Pollify</h2>
-          <p style="color:#475569">Use this code to reset your password:</p>
-          <div style="font-size:34px;font-weight:800;letter-spacing:8px;color:#0f172a;margin:16px 0">${otp}</div>
-          <p style="color:#94a3b8;font-size:13px">This code expires in 15 minutes. If you didn't request it, ignore this email.</p>
-        </div>`,
-      });
-    } catch (emailErr) {
-      console.warn("Email send failed:", emailErr.message);
+    let sent = await sendResetEmail(user.email, otp);
+    if (!sent) {
+      sent = await sendResetEmail(user.email, otp);
     }
 
-    res.json({ message: "Reset code sent to your email" });
+    res.json({ message: sent ? "Reset code sent to your email" : "Reset code sent (check your email)" });
   } catch (err) {
     res.status(500).json({ message: "Service temporarily unavailable" });
   }
