@@ -15,6 +15,7 @@ const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
   port: parseInt(process.env.SMTP_PORT || "587"),
   secure: false,
+  requireTLS: true,
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
@@ -55,7 +56,7 @@ export const forgotPassword = async (req, res) => {
 
     let sent = await sendResetEmail(user.email, otp);
     if (!sent) {
-      sent = await sendResetEmail(user.email, otp);
+      console.warn("Password reset email failed - check SMTP credentials and Gmail settings");
     }
 
     res.json({ message: sent ? "Reset code sent to your email" : "Reset code sent (check your email)" });
