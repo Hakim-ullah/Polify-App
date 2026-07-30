@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Trash2, AlertCircle, X } from "lucide-react";
 import api from "../utils/api.js";
-import { TYPE_META } from "../components/FilterBar.jsx";
-import { inputCls, Button } from "../components/UIElements.jsx";
+import { TYPE_META } from "../assets/helpers component/FilterBar.jsx";
+import { inputCls, Button } from "../assets/helpers component/UIElements.jsx";
 import { createPollStyles as s } from "../assets/dummyStyles";
 
 const CATEGORIES = [
@@ -51,13 +51,12 @@ export default function CreatePoll() {
       return setError("Please add at least 2 images");
     setBusy(true);
     try {
-      const fd = new FormData();
-      fd.append("question", question);
-      fd.append("type", type);
-      fd.append("category", category || "General");
-      if (type === "single") fd.append("options", JSON.stringify(options));
-      if (type === "image") images.forEach((f) => fd.append("images", f));
-      await api.post("/polls", fd);
+      await api.post("/polls", {
+        question,
+        type,
+        category: category || "General",
+        options: type === "single" ? options : undefined,
+      });
       navigate("/my-polls");
     } catch (err) {
       setError(err.response?.data?.message || "Could not create poll");
