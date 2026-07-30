@@ -15,7 +15,6 @@ export default function ForgotPasswordPage() {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [demoCode, setDemoCode] = useState("");
 
   const handleSendOtp = async (e) => {
     e.preventDefault();
@@ -23,7 +22,6 @@ export default function ForgotPasswordPage() {
     setBusy(true);
     try {
       const { data } = await api.post("/auth/forgot-password", { email });
-      if (data.demoOtp) setDemoCode(data.demoOtp);
       setStep(2);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to send reset code.");
@@ -68,7 +66,7 @@ export default function ForgotPasswordPage() {
         step === 1
           ? "Enter your email to receive a verification code."
           : step === 2
-            ? `Enter the 6-digit code sent to ${email}`
+            ? `Enter the 6-character verification code sent to ${email}`
             : "Choose a strong new password for your account."
       }
     >
@@ -124,27 +122,21 @@ export default function ForgotPasswordPage() {
         </form>
       )}
 
-      {/* Step 2: Verify OTP */}
+        {/* Step 2: Verify OTP */}
       {step === 2 && (
         <form onSubmit={handleVerifyOtp} className={ls.form}>
-          {demoCode && (
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-400 text-center font-mono font-bold">
-              Demo Reset OTP: {demoCode}
-            </div>
-          )}
           <div className={ls.field}>
-            <label className={s.label}>6-Digit OTP Code</label>
+            <label className={s.label}>Verification Code</label>
             <div className={ls.inputWrapper}>
               <input
                 type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
+                inputMode="text"
                 required
                 maxLength={6}
-                placeholder="123456"
+                placeholder="A1b2C3"
                 value={otp}
                 onChange={(e) => {
-                  const v = e.target.value.replace(/\D/g, "");
+                  const v = e.target.value.replace(/[^A-Za-z0-9]/g, "");
                   setOtp(v);
                 }}
                 className={`${ls.input} ${ls.inputWithIcon} tracking-widest text-center font-mono text-lg`}
