@@ -26,8 +26,17 @@ export const verifyResetOtp = async (req, res) => {
     const user = await User.findOne({ email: email?.toLowerCase().trim() });
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    if (!user.resetOtp || user.resetOtp !== String(otp) || user.resetOtpExpire < new Date()) {
-      return res.status(400).json({ message: "Invalid or expired OTP" });
+    if (!/^\d{6}$/.test(otp)) {
+      return res.status(400).json({ message: "OTP must be exactly 6 digits" });
+    }
+    if (!user.resetOtp) {
+      return res.status(400).json({ message: "No OTP found. Please request a new one." });
+    }
+    if (user.resetOtp !== String(otp)) {
+      return res.status(400).json({ message: "Invalid OTP code" });
+    }
+    if (user.resetOtpExpire < new Date()) {
+      return res.status(400).json({ message: "OTP has expired. Please request a new one." });
     }
 
     res.json({ ok: true, message: "OTP verified successfully" });
@@ -42,8 +51,17 @@ export const resetPassword = async (req, res) => {
     const user = await User.findOne({ email: email?.toLowerCase().trim() });
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    if (!user.resetOtp || user.resetOtp !== String(otp) || user.resetOtpExpire < new Date()) {
-      return res.status(400).json({ message: "Invalid or expired OTP" });
+    if (!/^\d{6}$/.test(otp)) {
+      return res.status(400).json({ message: "OTP must be exactly 6 digits" });
+    }
+    if (!user.resetOtp) {
+      return res.status(400).json({ message: "No OTP found. Please request a new one." });
+    }
+    if (user.resetOtp !== String(otp)) {
+      return res.status(400).json({ message: "Invalid OTP code" });
+    }
+    if (user.resetOtpExpire < new Date()) {
+      return res.status(400).json({ message: "OTP has expired. Please request a new one." });
     }
 
     user.password = await bcrypt.hash(newPassword, 10);

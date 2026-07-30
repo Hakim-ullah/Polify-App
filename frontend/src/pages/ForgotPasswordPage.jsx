@@ -1,4 +1,11 @@
- const { forgotPassword, verifyResetOtp, resetPassword } = useAuth();
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, Mail, KeyRound, AlertCircle, Eye, EyeOff } from "lucide-react";
+import api from "../utils/api.js";
+import AuthLayout from "../components/AuthLayout.jsx";
+import { forgotPasswordStyles as s, loginStyles as ls } from "../assets/dummyStyles.jsx";
+
+export default function ForgotPasswordPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [email, setEmail] = useState("");
@@ -8,21 +15,67 @@
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [demoCode, setDemoCode] = useState("");
 
-  const titles = ["Reset your password", "Check your inbox", "New password"];
-  const subtitles = [
-    "Enter your email and we'll send you a reset code.",
-    "Enter the 6-digit code we sent to your email.",
-    "Choose a strong password for your account.",
-  ];
+  const handleSendOtp = async (e) => {
+    e.preventDefault();
+    setError("");
+    setBusy(true);
+    try {
+      const { data } = await api.post("/auth/forgot-password", { email });
+      if (data.demoOtp) setDemoCode(data.demoOtp);
+      setStep(2);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to send reset code.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    setError("");
+    setBusy(true);
+    try {
+      await api.post("/auth/verify-otp", { email, otp });
+      setStep(3);
+    } catch (err) {
+      setError(err.response?.data?.message || "Invalid or expired OTP code.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (pw !== pw2) return setError("Passwords do not match");
+    setError("");
+    setBusy(true);
+    try {
+      await api.post("/auth/reset-password", { email, otp, newPassword: pw });
+      navigate("/login", { state: { reset: true } });
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to reset password.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <AuthLayout
+      title={step === 1 ? "Reset password" : step === 2 ? "Enter OTP code" : "Set new password"}
+      subtitle={
+        step === 1
+          ? "Enter your email to receive a verification code."
+          : step === 2
+            ? `Enter the 6-digit code sent to ${email}`
+            : "Choose a strong new password for your account."
+      }
+    >
+      {/* Step Indicator */}
       <div className={s.stepContainer}>
         {[1, 2, 3].map((sNum) => (
-          <div
-            key={sNum}
-            className={`${s.stepItemWrapper} ${sNum < 3 ? "flex-1" : ""}`}
-          >
+          <div key={sNum} className={`${s.stepItemWrapper} ${sNum < 3 ? "flex-1" : ""}`}>
             <div
               className={`${s.stepCircleBase} ${
                 sNum < step
@@ -35,56 +88,90 @@
               {sNum < step ? "✓" : sNum}
             </div>
             {sNum < 3 && (
-              <div
-                className={`${s.stepLineBase} ${
-                  sNum < step ? s.stepLineDone : s.stepLineInactive
-                }`}
-              />
+              <div className={`${s.stepLineBase} ${sNum < step ? s.stepLineDone : s.stepLineInactive}`} />
             )}
           </div>
         ))}
       </div>
 
+      {error && (
+        <div className={s.errorBox}>
+          <AlertCircle className={s.errorIcon} size={15} />
+          <span className={s.errorText}>{error}</span>
+        </div>
+      )}
 
-          
-                <>
-                  <svg
-                    className="animate-spin w-4 h-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v8z"
-                    />
-                  </svg>
-                  Sending code…
-                </>
-              
-
-      {/* Step 3 — New password */}
-      {step === 3 && (
-        <form onSubmit={reset} className={s.newPasswordForm}>
-          <div className={s.passwordInputWrapper}>
-            <label className={s.label}>New password</label>
-            <div className={s.passwordInputWithToggle}>
+      {/* Step 1: Send OTP */}
+      {step === 1 && (
+        <form onSubmit={handleSendOtp} className={ls.form}>
+          <div className={ls.field}>
+            <label className={s.label}>Email address</label>
+            <div className={ls.inputWrapper}>
               <input
-                className={`${authInputCls} ${s.passwordInput}`}
-                type={showPw ? "text" : "password"}
-                minLength={8}
+                type="email"
                 required
-                placeholder="Min. 8 characters"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={`${ls.input} ${ls.inputWithIcon}`}
+              />
+              <Mail size={16} className={ls.icon} />
+            </div>
+          </div>
+          <button type="submit" disabled={busy} className={ls.submitButton}>
+            {busy ? "Sending code…" : "Send verification code →"}
+          </button>
+        </form>
+      )}
+
+      {/* Step 2: Verify OTP */}
+      {step === 2 && (
+        <form onSubmit={handleVerifyOtp} className={ls.form}>
+          {demoCode && (
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-400 text-center font-mono font-bold">
+              Demo Reset OTP: {demoCode}
+            </div>
+          )}
+          <div className={ls.field}>
+            <label className={s.label}>6-Digit OTP Code</label>
+            <div className={ls.inputWrapper}>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                required
+                maxLength={6}
+                placeholder="123456"
+                value={otp}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, "");
+                  setOtp(v);
+                }}
+                className={`${ls.input} ${ls.inputWithIcon} tracking-widest text-center font-mono text-lg`}
+              />
+              <KeyRound size={16} className={ls.icon} />
+            </div>
+          </div>
+          <button type="submit" disabled={busy || otp.length !== 6} className={ls.submitButton}>
+            {busy ? "Verifying…" : "Verify code →"}
+          </button>
+        </form>
+      )}
+
+      {/* Step 3: New Password */}
+      {step === 3 && (
+        <form onSubmit={handleResetPassword} className={ls.form}>
+          <div className={ls.field}>
+            <label className={s.label}>New password</label>
+            <div className={ls.inputWrapper}>
+              <input
+                type={showPw ? "text" : "password"}
+                required
+                minLength={6}
+                placeholder="Min. 6 characters"
                 value={pw}
                 onChange={(e) => setPw(e.target.value)}
+                className={ls.input}
               />
               <button
                 type="button"
@@ -95,64 +182,33 @@
               </button>
             </div>
           </div>
-          <div className={s.passwordInputWrapper}>
+
+          <div className={ls.field}>
             <label className={s.label}>Confirm password</label>
-            <div className={s.passwordInputWithToggle}>
+            <div className={ls.inputWrapper}>
               <input
-                className={`${authInputCls} ${
-                  pw2 && pw2 === pw
-                    ? s.confirmInputValid
-                    : pw2
-                      ? s.confirmInputInvalid
-                      : ""
-                }`}
                 type={showPw ? "text" : "password"}
-                minLength={8}
                 required
-                placeholder="Re-enter password"
+                minLength={6}
+                placeholder="Re-enter new password"
                 value={pw2}
                 onChange={(e) => setPw2(e.target.value)}
+                className={ls.input}
               />
-              {pw2 && (
-                <span
-                  className={`${s.confirmFeedback} ${
-                    pw2 === pw ? s.confirmFeedbackValid : s.confirmFeedbackInvalid
-                  }`}
-                >
-                  {pw2 === pw ? "✓" : "✗"}
-                </span>
-              )}
             </div>
           </div>
-          <div className="pt-1">
-            <AuthButton disabled={busy || pw !== pw2}>
-              {busy ? (
-                <>
-                  <svg
-                    className="animate-spin w-4 h-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8v8z"
-                    />
-                  </svg>
-                  Resetting…
-                </>
-              ) : (
-                "Reset password →"
-              )}
-            </AuthButton>
-          </div>
+
+          <button type="submit" disabled={busy || pw !== pw2} className={ls.submitButton}>
+            {busy ? "Resetting…" : "Reset password →"}
+          </button>
         </form>
       )}
+
+      <div className={s.footerLink}>
+        <Link to="/login" className={s.link}>
+          Back to sign in
+        </Link>
+      </div>
+    </AuthLayout>
+  );
+}
