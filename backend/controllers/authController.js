@@ -87,7 +87,8 @@ export const updateProfile = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     if (req.file) {
-      user.avatar = `/uploads/avatars/${req.file.filename}`;
+      const base64 = req.file.buffer.toString("base64");
+      user.avatar = `data:${req.file.mimetype};base64,${base64}`;
     }
     if (username && username.trim() !== user.username) {
       const taken = await User.findOne({ username: username.trim() });
