@@ -23,15 +23,7 @@ const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "polling_jwt_secret_key_2026";
 const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/polling_db";
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, "uploads", "avatars"));
-  },
-  filename: (req, file, cb) => {
-    const unique = `${req.userId || "unknown"}-${Date.now()}${path.extname(file.originalname)}`;
-    cb(null, unique);
-  },
-});
+const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 const serveUploads = express.static(path.join(__dirname, "uploads"));
