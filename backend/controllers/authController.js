@@ -86,6 +86,9 @@ export const updateProfile = async (req, res) => {
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    if (req.file) {
+      user.avatar = `/uploads/avatars/${req.file.filename}`;
+    }
     if (username && username.trim() !== user.username) {
       const taken = await User.findOne({ username: username.trim() });
       if (taken) return res.status(400).json({ message: "Username already taken" });
@@ -93,7 +96,7 @@ export const updateProfile = async (req, res) => {
     }
     if (name) user.name = name.trim();
     if (bio !== undefined) user.bio = bio;
-    
+
     await user.save();
     res.json({ user: clean(user) });
   } catch (err) {

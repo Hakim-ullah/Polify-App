@@ -3,6 +3,9 @@ import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
+import multer from "multer";
+import path from "path";
+import { fileURLToPath } from "url";
 
 import * as authController from "./controllers/authController.js";
 import * as passwordController from "./controllers/passwordController.js";
@@ -12,10 +15,27 @@ import * as voteController from "./controllers/voteController.js";
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "polling_jwt_secret_key_2026";
 const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/polling_db";
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, "uploads", "avatars"));
+  },
+  filename: (req, file, cb) => {
+    const unique = `${req.userId || "unknown"}-${Date.now()}${path.extname(file.originalname)}`;
+    cb(null, unique);
+  },
+});
+const upload = multer({ storage });
+
+const serveUploads = express.static(path.join(__dirname, "uploads"));
+app.use("/uploads", serveUploads);
 
 app.use(cors());
 app.use(express.json());
@@ -55,7 +75,7 @@ const optionalAuth = (req, res, next) => {
 app.post("/api/auth/register", authController.register);
 app.post("/api/auth/login", authController.login);
 app.get("/api/auth/me", authGuard, authController.getMe);
-app.put("/api/auth/profile", authGuard, authController.updateProfile);
+app.put("/api/auth/profile", authGuard, upload.single("avatar"), authController.updateProfile);
 
 // Password Reset
 app.post("/api/auth/forgot-password", passwordController.forgotPassword);

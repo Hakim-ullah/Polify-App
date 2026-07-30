@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Send, Trash2, CornerDownRight } from "lucide-react";
-import api from "../utils/api.js";
-import { useAuth } from "../context/AuthContext.jsx";
+import api from "../../utils/api.js";
+import { useAuth } from "../../context/AuthContext.jsx";
 import { useToast } from "./Toast.jsx";
 import { Avatar } from "./UIElements.jsx";
-import { commentsStyles as s } from"../assets/dummyStyles";
+import { commentsStyles as s } from "../dummyStyles.jsx";
 
 const ago = (date) => {
   const s = Math.floor((Date.now() - new Date(date)) / 1000);
@@ -140,7 +140,7 @@ export default function Comments({ pollId }) {
 
   useEffect(() => {
     api
-      .get(`/comments/${pollId}`)
+      .get(`/polls/${pollId}/comments`)
       .then(({ data }) => setList(data))
       .catch(() => {});
   }, [pollId]);
@@ -150,7 +150,7 @@ export default function Comments({ pollId }) {
     if (!text.trim() || busy) return;
     setBusy(true);
     try {
-      const { data } = await api.post(`/comments/${pollId}`, { text });
+      const { data } = await api.post(`/polls/${pollId}/comments`, { text });
       setList((l) => [data, ...l]);
       setText("");
     } finally {
@@ -159,7 +159,7 @@ export default function Comments({ pollId }) {
   };
 
   const reply = async (parent, body) => {
-    const { data } = await api.post(`/comments/${pollId}`, {
+    const { data } = await api.post(`/polls/${pollId}/comments`, {
       text: body,
       parent,
     });
@@ -167,7 +167,7 @@ export default function Comments({ pollId }) {
   };
 
   const remove = async (id) => {
-    await api.delete(`/comments/${id}`);
+    await api.delete(`/polls/${id}/comments`);
     setList((l) => l.filter((c) => c._id !== id && c.parent !== id));
     toast("Comment deleted");
   };
