@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Star, Check, ThumbsUp, ThumbsDown, RotateCcw } from "lucide-react";
-import { pollResultsStyles as s } from "../assets/dummyStyles";
+import { pollResultsStyles as s } from "../dummyStyles.jsx";
 
 function useCountUp(target, duration = 850) {
   const [n, setN] = useState(0);

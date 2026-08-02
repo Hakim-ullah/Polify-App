@@ -4,6 +4,8 @@ import User from "../models/User.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "polling_jwt_secret_key_2026";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const clean = (user) => ({
   _id: user._id,
   name: user.name,
@@ -11,7 +13,15 @@ const clean = (user) => ({
   email: user.email,
   bio: user.bio,
   avatar: user.avatar,
+  isVerified: user.isVerified,
 });
+
+const validateEmail = (email) => {
+  if (!EMAIL_REGEX.test(email)) {
+    return "Please enter a valid email address";
+  }
+  return null;
+};
 
 export const register = async (req, res) => {
   try {
@@ -20,11 +30,21 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
+    const emailError = validateEmail(email);
+    if (emailError) {
+      return res.status(400).json({ message: emailError });
+    }
+
     const existingUser = await User.findOne({
       $or: [{ email: email.toLowerCase().trim() }, { username: username.trim() }],
     });
     if (existingUser) {
-      return res.status(400).json({ message: "Email or username already taken" });
+      if (String(existingUser.email) === email.toLowerCase().trim()) {
+        return res.status(400).json({ message: "This email already exists. Please login" });
+      }
+      if (existingUser.username === username.trim()) {
+        return res.status(400).json({ message: "Username already taken" });
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -33,6 +53,7 @@ export const register = async (req, res) => {
       username: username.trim(),
       email: email.toLowerCase().trim(),
       password: hashedPassword,
+      isVerified: true,
     });
 
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: "7d" });
@@ -53,14 +74,19 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: "Email and password are required" });
     }
 
+    const emailError = validateEmail(email);
+    if (emailError) {
+      return res.status(400).json({ message: emailError });
+    }
+
     const user = await User.findOne({ email: email.toLowerCase().trim() });
     if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(400).json({ message: "Incorrect email or password" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(400).json({ message: "Incorrect email or password" });
     }
 
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: "7d" });
@@ -87,8 +113,7 @@ export const updateProfile = async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
 
     if (req.file) {
-      const base64 = req.file.buffer.toString("base64");
-      user.avatar = `data:${req.file.mimetype};base64,${base64}`;
+      user.avatar = `/uploads/${req.file.filename}`;
     }
     if (username && username.trim() !== user.username) {
       const taken = await User.findOne({ username: username.trim() });

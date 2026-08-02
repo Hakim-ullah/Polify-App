@@ -107,3 +107,23 @@ export const getComments = async (req, res) => {
     res.status(500).json({ message: "Service temporarily unavailable" });
   }
 };
+
+export const deleteComment = async (req, res) => {
+  try {
+    const poll = await Poll.findById(req.params.id);
+    if (!poll) return res.status(404).json({ message: "Poll not found" });
+
+    const comment = poll.comments.id(req.params.commentId);
+    if (!comment) return res.status(404).json({ message: "Comment not found" });
+
+    if (String(comment.user) !== String(req.userId)) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    comment.deleteOne();
+    await poll.save();
+    res.json({ message: "Comment deleted" });
+  } catch (err) {
+    res.status(500).json({ message: "Service temporarily unavailable" });
+  }
+};

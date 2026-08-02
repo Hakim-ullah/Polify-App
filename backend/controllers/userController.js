@@ -22,6 +22,10 @@ export const getUserProfile = async (req, res) => {
       (id) => String(id) === String(user._id)
     );
 
+    const isFollowedBy = req.userId
+      ? (user.followers || []).some((id) => String(id) === String(req.userId))
+      : false;
+
     const shaped = await withCounts(
       polls.map((p) => shapePoll(p, req.userId, set))
     );
@@ -35,6 +39,7 @@ export const getUserProfile = async (req, res) => {
         bio: user.bio,
       },
       isFollowing,
+      isFollowedBy,
       isMe: String(user._id) === String(req.userId),
       stats: {
         created: polls.length,
@@ -69,7 +74,12 @@ export const toggleFollowUser = async (req, res) => {
     }
 
     await Promise.all([me.save(), targetUser.save()]);
-    res.json({ isFollowing: !has });
+
+    const isFollowedBy = (targetUser.followers || []).some(
+      (id) => String(id) === String(req.userId)
+    );
+
+    res.json({ isFollowing: !has, isFollowedBy });
   } catch (err) {
     res.status(500).json({ message: "Service temporarily unavailable" });
   }

@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback } from "react";
 import { CheckCircle2, AlertCircle } from "lucide-react";
-import { toastStyles as s } from "../assets/dummyStyles";
+import { toastStyles as s } from "../dummyStyles.jsx";
 
 const ToastCtx = createContext(() => {});
 export const useToast = () => useContext(ToastCtx);

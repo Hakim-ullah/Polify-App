@@ -1,5 +1,8 @@
+// pollController.js — CRUD for polls + image upload
+import { createReadStream, unlinkSync } from "fs";
 import Poll from "../models/Poll.js";
 import User from "../models/User.js";
+import cloudinary from "../config/cloudinary.js";
 import { shapePoll } from "../utils/pollShape.js";
 import { withCounts } from "../utils/counts.js";
 
@@ -11,9 +14,58 @@ const getBookmarkSet = async (userId) => {
   return new Set((u?.bookmarks || []).map(String));
 };
 
+const uploadToCloudinary = (filePath) =>
+  new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: "pollify/images",
+        use_filename: true,
+        unique_filename: true,
+        resource_type: "image",
+      },
+      (err, result) => {
+        if (err) return reject(err);
+        resolve(result);
+      }
+    );
+    const fileStream = createReadStream(filePath);
+    fileStream.pipe(stream);
+    fileStream.on("error", (err) => {
+      stream.destroy(err);
+      reject(err);
+    });
+  });
+
+// Upload poll images to Cloudinary, return permanent URLs
+export const uploadImages = async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: "No images uploaded" });
+    }
+    const uploadPromises = req.files.map(async (f) => {
+      const filePath = f.path.replace(/\\/g, "/");
+      const result = await uploadToCloudinary(filePath);
+      try { unlinkSync(filePath); } catch { /* ignore cleanup errors */ }
+      return result.secure_url;
+    });
+    const urls = await Promise.all(uploadPromises);
+    res.json({ urls });
+  } catch (err) {
+    console.error("Cloudinary upload error:", err.message);
+    console.error("Cloudinary config:", {
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? "set" : "MISSING",
+      api_key: process.env.CLOUDINARY_API_KEY ? "set" : "MISSING",
+      api_secret: process.env.CLOUDINARY_API_SECRET ? "set" : "MISSING",
+    });
+    console.error("Cloudinary full error:", err);
+    res.status(500).json({ message: "Image upload failed", error: err.message });
+  }
+};
+
+// Create a new poll (yesno / single / image / open / rating)
 export const createPoll = async (req, res) => {
   try {
-    const { question, type, category } = req.body;
+    const { question, type, category, imageUrls } = req.body;
     if (!question || !type) {
       return res.status(400).json({ message: "Question and poll type are required" });
     }
@@ -22,7 +74,10 @@ export const createPoll = async (req, res) => {
     if (type === "yesno") {
       options = [{ text: "Yes" }, { text: "No" }];
     } else if (type === "single") {
-      const parsed = typeof req.body.options === "string" ? JSON.parse(req.body.options || "[]") : req.body.options || [];
+      const parsed =
+        typeof req.body.options === "string"
+          ? JSON.parse(req.body.options || "[]")
+          : req.body.options || [];
       options = parsed
         .filter((t) => typeof t === "string" && t.trim())
         .map((t) => ({ text: t.trim() }));
@@ -30,11 +85,13 @@ export const createPoll = async (req, res) => {
         return res.status(400).json({ message: "Add at least 2 options" });
       }
     } else if (type === "image") {
-      // Dummy images if none uploaded
-      options = [
-        { image: "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=500", text: "Option A" },
-        { image: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=500", text: "Option B" },
-      ];
+      if (!imageUrls || imageUrls.length < 2) {
+        return res.status(400).json({ message: "Please upload at least 2 images" });
+      }
+      options = imageUrls.map((url, i) => ({
+        image: url,
+        text: `Option ${String.fromCharCode(65 + i)}`,
+      }));
     }
 
     const poll = await Poll.create({

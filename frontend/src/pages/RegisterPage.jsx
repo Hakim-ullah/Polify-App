@@ -5,6 +5,8 @@ import { useAuth } from "../context/AuthContext.jsx";
 import AuthLayout from "../components/AuthLayout.jsx";
 import { loginStyles as s } from "../assets/dummyStyles.jsx";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function RegisterPage() {
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -26,9 +28,16 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
     setBusy(true);
+    if (!EMAIL_REGEX.test(form.email)) {
+      setError("Please enter a valid email address");
+      setBusy(false);
+      return;
+    }
     try {
-      await register(form.name, form.username, form.email, form.password);
-      navigate("/dashboard");
+      const { data } = await register(form.name, form.username, form.email, form.password);
+      if (data.token) {
+        navigate("/dashboard", { replace: true });
+      }
     } catch (err) {
       setError(
         err.response?.data?.message ||

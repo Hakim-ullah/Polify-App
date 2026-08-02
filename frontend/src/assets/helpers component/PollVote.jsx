@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Star, Check, ThumbsUp, ThumbsDown } from "lucide-react";
 import PollResults from "./PollResults.jsx";
 import { inputCls } from "./UIElements.jsx";
-import { pollVoteStyles as s } from "../assets/dummyStyles";
+import { pollVoteStyles as s } from "../dummyStyles.jsx";
 
 export default function PollVote({ poll, onVote, onUnvote }) {
   const [sel, setSel] = useState(null);

@@ -14,7 +14,7 @@ export const shapePoll = (poll, userId, bookmarkSet = new Set()) => {
       return { label: `${star} Star`, star, count, percent: pct(count) };
     });
   } else if (poll.type === "open") {
-    results = votes.map((v) => ({ text: String(v.value) }));
+    results = votes.map((v) => ({ text: String(v.value), user: v.user }));
   } else {
     results = (poll.options || []).map((opt, i) => {
       const count = votes.filter((v) => Number(v.value) === i).length;

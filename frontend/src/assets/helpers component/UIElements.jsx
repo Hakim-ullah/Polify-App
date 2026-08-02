@@ -1,4 +1,4 @@
-import { uiElementStyles as s } from "../dummyStyles";
+import { uiElementStyles as s } from "../dummyStyles.jsx";
 
 const btnStyles = {
   primary: s.btnPrimary,
