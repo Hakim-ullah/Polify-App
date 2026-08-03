@@ -13,7 +13,9 @@ const userSchema = new mongoose.Schema(
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     resetOtp: { type: String, default: null },
     resetOtpExpire: { type: Date, default: null },
-    isVerified: { type: Boolean, default: true },
+    registerOtp: { type: String, default: null },
+    registerOtpExpire: { type: Date, default: null },
+    isVerified: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

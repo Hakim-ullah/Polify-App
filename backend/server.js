@@ -7,7 +7,6 @@ import jwt from "jsonwebtoken";
 import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
-import fs from "fs";
 
 import * as authController from "./controllers/authController.js";
 import * as passwordController from "./controllers/passwordController.js";
@@ -17,12 +16,10 @@ import * as voteController from "./controllers/voteController.js";
 
 dotenv.config();
 
-const { default: cloudinary } = await import("./config/cloudinary.js");
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+
+
+
+import cloudinary from "./config/cloudinary.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,21 +29,10 @@ const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "polling_jwt_secret_key_2026";
 const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/polling_db";
 
-const uploadsDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
+// Use memory storage — keeps files as buffers in memory instead of writing
+// temp files to disk, avoiding Windows path issues and orphaned temp files.
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadsDir),
-  filename: (req, file, cb) => {
-    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, `poll-${unique}${path.extname(file.originalname)}`);
-  },
-});
-const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
-
-app.use("/uploads", express.static(uploadsDir));
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "..", "frontend", "dist")));
@@ -76,6 +62,8 @@ const optionalAuth = (req, res, next) => {
 // --- Routes ---
 // Auth
 app.post("/api/auth/register", authController.register);
+app.post("/api/auth/verify-register", authController.verifyRegister);
+app.post("/api/auth/resend-register-otp", authController.resendRegisterOtp);
 app.post("/api/auth/login", authController.login);
 app.get("/api/auth/me", authGuard, authController.getMe);
 app.put("/api/auth/profile", authGuard, upload.single("avatar"), authController.updateProfile);
@@ -129,19 +117,28 @@ app.get(/.*/, (req, res) => {
 });
 
 // --- Start ---
+// Retry MongoDB forever instead of exiting, so a transient network/DNS
+// failure doesn't kill the backend and break login/other requests.
 const start = async () => {
-  try {
-    await mongoose.connect(MONGO_URI, {
-      serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 5000,
-      socketTimeoutMS: 5000,
-    });
-    console.log("Connected to MongoDB successfully.");
-  } catch (err) {
-    console.error("MongoDB connection failed:", err.message);
-    console.error("Exiting - backend cannot serve requests without database.");
-    process.exit(1);
+  let attempt = 0;
+  for (;;) {
+    try {
+      await mongoose.connect(MONGO_URI, {
+        serverSelectionTimeoutMS: 3000,
+        connectTimeoutMS: 5000,
+        socketTimeoutMS: 8000,
+      });
+      console.log("Connected to MongoDB successfully.");
+      break;
+    } catch (err) {
+      attempt++;
+      console.error(`MongoDB connection failed (attempt ${attempt}):`, err.message);
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
   }
+  mongoose.connection.on("error", (err) =>
+    console.error("MongoDB connection error:", err.message)
+  );
   app.listen(PORT, () => console.log(`Backend server running on http://localhost:${PORT}`));
 };
 

@@ -39,6 +39,20 @@ export function AuthProvider({ children }) {
     return data;
   };
 
+  const verifyRegister = async (email, otp) => {
+    const { data } = await api.post("/auth/verify-register", { email, otp });
+    if (data.token) {
+      localStorage.setItem("polling_token", data.token);
+      setUser(data.user);
+    }
+    return data;
+  };
+
+  const resendRegisterOtp = async (email) => {
+    const { data } = await api.post("/auth/resend-register-otp", { email });
+    return data;
+  };
+
   const logout = () => {
     localStorage.removeItem("polling_token");
     setUser(null);
@@ -55,6 +69,8 @@ export function AuthProvider({ children }) {
         loading,
         login,
         register,
+        verifyRegister,
+        resendRegisterOtp,
         logout,
         updateUser,
         isAuthenticated: !!user,

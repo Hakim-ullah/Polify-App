@@ -264,6 +264,12 @@ export const otpStepStyles = {
   // â”€â”€â”€ Error message â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   errorBox: "rounded-xl bg-rose-500/10 border border-rose-500/20 px-4 py-3 text-rose-300 text-sm",
 
+  // Fallback code (shown when the email could not be sent)
+  fallbackBox:
+    "rounded-xl bg-amber-500/10 border border-amber-500/25 px-4 py-3 text-amber-300 text-sm",
+  fallbackCode:
+    "mt-2 text-center text-2xl font-bold tracking-[0.5em] text-amber-200 select-all",
+
   // â”€â”€â”€ OTP input field â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   otpLabel: "block text-xs font-semibold text-zinc-400 uppercase tracking-wider",
   otpInput:

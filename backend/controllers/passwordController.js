@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
-import nodemailer from "nodemailer";
 import User from "../models/User.js";
+import sendOtpEmail from "../config/mailer.js";
 
 const generateOtp = () => {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -9,38 +9,6 @@ const generateOtp = () => {
     otp += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return otp;
-};
-
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.gmail.com",
-  port: parseInt(process.env.SMTP_PORT || "587"),
-  secure: false,
-  requireTLS: true,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
-
-const sendResetEmail = async (to, otp) => {
-  const from = process.env.EMAIL_FROM || "polify@official";
-  try {
-    await transporter.sendMail({
-      from,
-      to,
-      subject: "Pollify — Password Reset Verification Code",
-      html: `<div style="font-family:Inter,Arial,sans-serif;max-width:440px;margin:auto;padding:24px;border:1px solid #e2e8f0;border-radius:16px">
-        <h2 style="color:#4f46e5;margin:0 0 8px">Pollify</h2>
-        <p style="color:#475569">Use this code to reset your password:</p>
-        <div style="font-size:34px;font-weight:800;letter-spacing:8px;color:#0f172a;margin:16px 0">${otp}</div>
-        <p style="color:#94a3b8;font-size:13px">This code expires in 15 minutes. If you didn't request it, ignore this email.</p>
-      </div>`,
-    });
-    return true;
-  } catch (emailErr) {
-    console.warn(`Email send failed from ${from}:`, emailErr.message);
-    return false;
-  }
 };
 
 export const forgotPassword = async (req, res) => {
@@ -54,13 +22,19 @@ export const forgotPassword = async (req, res) => {
     user.resetOtpExpire = new Date(Date.now() + 15 * 60 * 1000);
     await user.save();
 
-    let sent = await sendResetEmail(user.email, otp);
+    let sent = await sendOtpEmail({
+      to: user.email,
+      otp,
+      subject: "Pollify — Password Reset Verification Code",
+      intro: "Use this code to reset your password:",
+    });
     if (!sent) {
       console.warn("Password reset email failed - check SMTP credentials and Gmail settings");
     }
 
     res.json({ message: sent ? "Reset code sent to your email" : "Reset code sent (check your email)" });
   } catch (err) {
+    console.error("Forgot password error:", err);
     res.status(500).json({ message: "Service temporarily unavailable" });
   }
 };
@@ -86,6 +60,7 @@ export const verifyResetOtp = async (req, res) => {
 
     res.json({ ok: true, message: "Verification code verified successfully" });
   } catch (err) {
+    console.error("Verify reset OTP error:", err);
     res.status(500).json({ message: "Service temporarily unavailable" });
   }
 };
@@ -116,6 +91,7 @@ export const resetPassword = async (req, res) => {
 
     res.json({ message: "Password updated successfully" });
   } catch (err) {
+    console.error("Reset password error:", err);
     res.status(500).json({ message: "Service temporarily unavailable" });
   }
 };

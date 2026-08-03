@@ -8,6 +8,7 @@ export default function OtpStep({
   onSubmit,
   onResend,
   submitText = "Verify",
+  fallback,
 }) {
   const [otp, setOtp] = useState("");
   const [left, setLeft] = useState(60);
@@ -64,16 +65,24 @@ export default function OtpStep({
       {/* Error */}
       {error && <div className={s.errorBox}>{error}</div>}
 
+      {/* Fallback code when the email couldn't be delivered */}
+      {fallback && (
+        <div className={s.fallbackBox}>
+          <p>{fallback.message}</p>
+          <div className={s.fallbackCode}>{fallback.code}</div>
+        </div>
+      )}
+
       {/* OTP input */}
       <div className="space-y-1.5">
         <label className={s.otpLabel}>Verification code</label>
         <input
           className={s.otpInput}
-          inputMode="numeric"
+          inputMode="text"
           maxLength={6}
           placeholder="······"
           value={otp}
-          onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+          onChange={(e) => setOtp(e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6))}
           required
         />
         {/* Progress dots */}

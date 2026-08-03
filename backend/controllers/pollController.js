@@ -1,5 +1,4 @@
 // pollController.js — CRUD for polls + image upload
-import { createReadStream, unlinkSync } from "fs";
 import Poll from "../models/Poll.js";
 import User from "../models/User.js";
 import cloudinary from "../config/cloudinary.js";
@@ -14,26 +13,24 @@ const getBookmarkSet = async (userId) => {
   return new Set((u?.bookmarks || []).map(String));
 };
 
-const uploadToCloudinary = (filePath) =>
+// Upload a file buffer directly to Cloudinary (no temp file needed)
+const uploadBufferToCloudinary = (buffer, mimetype) =>
   new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
         folder: "pollify/images",
-        use_filename: true,
+        use_filename: false,
         unique_filename: true,
         resource_type: "image",
+        // Store permanently — no expiry
+        invalidate: true,
       },
       (err, result) => {
         if (err) return reject(err);
         resolve(result);
       }
     );
-    const fileStream = createReadStream(filePath);
-    fileStream.pipe(stream);
-    fileStream.on("error", (err) => {
-      stream.destroy(err);
-      reject(err);
-    });
+    stream.end(buffer);
   });
 
 // Upload poll images to Cloudinary, return permanent URLs
@@ -42,22 +39,14 @@ export const uploadImages = async (req, res) => {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ message: "No images uploaded" });
     }
-    const uploadPromises = req.files.map(async (f) => {
-      const filePath = f.path.replace(/\\/g, "/");
-      const result = await uploadToCloudinary(filePath);
-      try { unlinkSync(filePath); } catch { /* ignore cleanup errors */ }
-      return result.secure_url;
-    });
-    const urls = await Promise.all(uploadPromises);
+    const uploadPromises = req.files.map((f) =>
+      uploadBufferToCloudinary(f.buffer, f.mimetype)
+    );
+    const results = await Promise.all(uploadPromises);
+    const urls = results.map((r) => r.secure_url);
     res.json({ urls });
   } catch (err) {
     console.error("Cloudinary upload error:", err.message);
-    console.error("Cloudinary config:", {
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME ? "set" : "MISSING",
-      api_key: process.env.CLOUDINARY_API_KEY ? "set" : "MISSING",
-      api_secret: process.env.CLOUDINARY_API_SECRET ? "set" : "MISSING",
-    });
-    console.error("Cloudinary full error:", err);
     res.status(500).json({ message: "Image upload failed", error: err.message });
   }
 };

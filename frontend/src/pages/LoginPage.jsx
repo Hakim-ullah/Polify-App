@@ -35,6 +35,10 @@ export default function LoginPage() {
       await login(email, password);
       navigate("/dashboard");
     } catch (err) {
+      if (err.response?.data?.needsVerification) {
+        navigate("/register", { state: { verifyEmail: email } });
+        return;
+      }
       setError(err.response?.data?.message || "Failed to log in. Please check credentials.");
     } finally {
       setBusy(false);
