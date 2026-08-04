@@ -40,11 +40,7 @@ export default function RegisterPage() {
     }
     try {
       const data = await register(form.name, form.username, form.email, form.password);
-      setFallback(
-        data?.emailSent === false && data?.devOtp
-          ? { message: data.message, code: data.devOtp }
-          : null
-      );
+      setFallback(data?.emailSent === false ? { message: data.message } : null);
       setStep(2);
     } catch (err) {
       setError(
@@ -67,11 +63,7 @@ export default function RegisterPage() {
 
   const handleResend = async () => {
     const data = await resendRegisterOtp(form.email);
-    setFallback(
-      data?.emailSent === false && data?.devOtp
-        ? { message: data.message, code: data.devOtp }
-        : null
-    );
+    setFallback(data?.emailSent === false ? { message: data.message } : null);
   };
 
   return (

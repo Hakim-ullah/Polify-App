@@ -22,7 +22,7 @@ export const forgotPassword = async (req, res) => {
     user.resetOtpExpire = new Date(Date.now() + 15 * 60 * 1000);
     await user.save();
 
-    let sent = await sendOtpEmail({
+    const sent = await sendOtpEmail({
       to: user.email,
       otp,
       subject: "Pollify — Password Reset Verification Code",
@@ -30,9 +30,12 @@ export const forgotPassword = async (req, res) => {
     });
     if (!sent) {
       console.warn("Password reset email failed - check SMTP credentials and Gmail settings");
+      return res.status(500).json({
+        message: "We could not send the reset code to your email. Please try again in a few minutes.",
+      });
     }
 
-    res.json({ message: sent ? "Reset code sent to your email" : "Reset code sent (check your email)" });
+    res.json({ message: "Reset code sent to your email" });
   } catch (err) {
     console.error("Forgot password error:", err);
     res.status(500).json({ message: "Service temporarily unavailable" });

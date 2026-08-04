@@ -22,7 +22,7 @@ dotenv.config();
 import cloudinary from "./config/cloudinary.js";
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname =  path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -33,7 +33,11 @@ const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/polling_db
 // temp files to disk, avoiding Windows path issues and orphaned temp files.
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-app.use(cors());
+app.use(cors({
+  origin:"*",
+  credentials:true,
+}));
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "..", "frontend", "dist")));
 
@@ -96,7 +100,13 @@ app.get("/api/users/:username", optionalAuth, userController.getUserProfile);
 app.post("/api/users/:id/follow", authGuard, userController.toggleFollowUser);
 
 // Health
-app.get("/api/health", (req, res) => res.json({ status: "OK", timestamp: new Date() }));
+app.get("/api/health", (req, res) =>
+  res.json({
+    status: "OK",
+    db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    timestamp: new Date(),
+  })
+);
 
 // Test Cloudinary connection
 app.get("/api/test-cloudinary", async (req, res) => {
@@ -117,11 +127,12 @@ app.get(/.*/, (req, res) => {
 });
 
 // --- Start ---
-// Retry MongoDB forever instead of exiting, so a transient network/DNS
-// failure doesn't kill the backend and break login/other requests.
-const start = async () => {
-  let attempt = 0;
-  for (;;) {
+// Listen immediately so the API answers with clear JSON errors even if
+// MongoDB is temporarily unreachable, then connect in the background with
+// automatic retries. On Vercel this avoids every request hanging/timing out
+// when the DB is slow or misconfigured.
+const start = () => {
+  const connectWithRetry = async () => {
     try {
       await mongoose.connect(MONGO_URI, {
         serverSelectionTimeoutMS: 3000,
@@ -129,13 +140,12 @@ const start = async () => {
         socketTimeoutMS: 8000,
       });
       console.log("Connected to MongoDB successfully.");
-      break;
     } catch (err) {
-      attempt++;
-      console.error(`MongoDB connection failed (attempt ${attempt}):`, err.message);
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      console.error(`MongoDB connection failed:`, err.message);
+      setTimeout(connectWithRetry, 5000);
     }
-  }
+  };
+  connectWithRetry();
   mongoose.connection.on("error", (err) =>
     console.error("MongoDB connection error:", err.message)
   );

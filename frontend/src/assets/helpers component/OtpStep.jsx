@@ -65,11 +65,10 @@ export default function OtpStep({
       {/* Error */}
       {error && <div className={s.errorBox}>{error}</div>}
 
-      {/* Fallback code when the email couldn't be delivered */}
+      {/* Email delivery warning (no code is ever shown) */}
       {fallback && (
         <div className={s.fallbackBox}>
           <p>{fallback.message}</p>
-          <div className={s.fallbackCode}>{fallback.code}</div>
         </div>
       )}
 

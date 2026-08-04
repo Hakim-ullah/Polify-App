@@ -20,7 +20,11 @@ const transporter = nodemailer.createTransport({
 });
 
 const sendOtpEmail = async ({ to, otp, subject, intro }) => {
-  const from = process.env.EMAIL_FROM || "pollify@official";
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.warn("Email send failed: SMTP_USER and SMTP_PASS are not configured on this server.");
+    return false;
+  }
+  const from = process.env.EMAIL_FROM || process.env.SMTP_USER || "pollify@official";
   try {
     await transporter.sendMail({
       from,

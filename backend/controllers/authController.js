@@ -112,15 +112,11 @@ export const register = async (req, res) => {
       intro: "Welcome to Pollify! Use this verification code to confirm your account:",
     });
 
-    const isDev = process.env.NODE_ENV !== "production";
     res.status(201).json({
       message: sent
         ? "Verification code sent to your email"
-        : isDev
-          ? "Email could not be sent. Use the code below to continue:"
-          : "Email could not be sent. Please try again.",
+        : "Account created, but we could not send the verification code to your email. Check your address and click Resend code.",
       emailSent: sent,
-      ...(sent || !isDev ? {} : { devOtp: otp }),
     });
   } catch (err) {
     console.error("Register error:", err);
@@ -188,15 +184,11 @@ export const resendRegisterOtp = async (req, res) => {
       intro: "Here is your new Pollify verification code:",
     });
 
-    const isDev = process.env.NODE_ENV !== "production";
     res.json({
       message: sent
         ? "Verification code sent to your email"
-        : isDev
-          ? "Email could not be sent. Use the code below to continue:"
-          : "Email could not be sent. Please try again.",
+        : "We could not send the verification code to your email. Please try again.",
       emailSent: sent,
-      ...(sent || !isDev ? {} : { devOtp: otp }),
     });
   } catch (err) {
     console.error("Resend register OTP error:", err);

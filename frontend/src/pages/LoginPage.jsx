@@ -39,7 +39,10 @@ export default function LoginPage() {
         navigate("/register", { state: { verifyEmail: email } });
         return;
       }
-      setError(err.response?.data?.message || "Failed to log in. Please check credentials.");
+      setError(
+        err.response?.data?.message ||
+          "Cannot reach the server. Please check your connection and try again."
+      );
     } finally {
       setBusy(false);
     }
